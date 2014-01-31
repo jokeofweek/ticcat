@@ -11,10 +11,20 @@ function send(res, obj, code) {
   res.send(code, {type: 'ok', value: obj});
 }
 
-
 function createRoute(req, res) {
   var id = GameStore.createGame(parseInt(req.params.size));
   send(res, {id: id});
+}
+
+function connectRoute(req, res) {
+  var gameId = req.params.gameId;
+  var reserveResult = GameStore.reserveSlot(gameId);
+  if (reserveResult) {
+    // Reserve a slot in the game.
+    send(res, reserveResult);
+  } else {
+    sendError(res, 'No open player slots.');
+  }
 }
 
 var setupRoutes = function(app) {
@@ -40,7 +50,7 @@ var setupRoutes = function(app) {
   });
 
   app.get('/create/:size', createRoute);
-  //app.get('/connect,:gameId', connectRoute);
+  app.get('/connect/:gameId', connectRoute);
 };
 
 module.exports = {
