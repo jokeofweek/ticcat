@@ -27,6 +27,11 @@ function connectRoute(req, res) {
   }
 }
 
+function statusRoute(req, res) {
+  var gameId = req.params.gameId;
+  send(res, GameStore.getGameStatus(gameId));
+};
+
 var setupRoutes = function(app) {
   // Only accept numeric sizes
   app.param('size', function(req, res, next, size) {
@@ -51,6 +56,7 @@ var setupRoutes = function(app) {
 
   app.get('/create/:size', createRoute);
   app.get('/connect/:gameId', connectRoute);
+  app.get('/status/:gameId', statusRoute);
 };
 
 module.exports = {

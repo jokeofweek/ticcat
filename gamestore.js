@@ -1,6 +1,16 @@
 var crypto = require('crypto');
 var util = require('./util.js');
 
+var GAME_STATUS = {
+  WIN_CIRCLE: 'win-o',
+  WIN_CROSS: 'win-x',
+  DRAW: 'draw',
+  WAITING_CIRCLE: 'waiting-o',
+  WAITING_CROSS: 'waiting-x',
+  SETUP: 'setup'
+};
+Object.freeze(GAME_STATUS);
+
 var games = {};
 
 var counter = 0;
@@ -20,11 +30,11 @@ function createGame(size) {
   games[id] = {
     // The actual game board
     board: util.createBoard(size),
-    // If it is circle's turn
-    isCircleTurn: true,
     // The turn keys (the first represents the turn that we are waiting for).
     // If less than 2 turn keys, than not all players are connected.
-    keys: []
+    keys: [],
+    // The status of the game.
+    status: GAME_STATUS.SETUP
   };
 
   return id;
@@ -44,6 +54,11 @@ function reserveSlot(id) {
 
   games[id].keys.push(key);
 
+  // If both slots are taken, change the status to waiting for circle move
+  if (games[id].keys.length == 2) {
+    games[id].status = GAME_STATUS.WAITING_CIRCLE;
+  }
+
   return {
     // The turn key for the player
     key: key,
@@ -56,8 +71,16 @@ function gameExists(id) {
   return games[id] ? true : false;
 }
 
+function getGameStatus(id) {
+  return {
+    board: util.formatBoard(games[id].board),
+    status: games[id].status
+  };
+}
+
 module.exports = {
   'createGame': createGame,
   'gameExists': gameExists,
-  'reserveSlot': reserveSlot
+  'reserveSlot': reserveSlot,
+  'getGameStatus': getGameStatus
 };

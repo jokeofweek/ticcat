@@ -100,15 +100,7 @@ var getWinResult = function(board) {
 };
 
 var formatBoard = function(board) {
-  var str = '';
-  var size = Math.sqrt(board.length);
-  for (var i = 0; i < size; i++) {
-    for (var j = 0; j < size; j++) {
-      str += board[(i * size) + j];
-    } 
-    str += "\n";
-  }
-  return str;
+  return board.join('');
 };
 
 module.exports = {
