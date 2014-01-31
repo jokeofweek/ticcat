@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+    <style type="text/css">
+    table td {
+        border-width: 1px;
+        font-size:46px;
+        text-align:center;
+        width: 64px;
+        height: 64px;
+        border-style: solid;
+        border-color: #666666;
+        background-color: #ffffff;
+    }
+    </style>
+</head>
+<body>
+    <div id="connection-info"></div>
+    <div id="game-content">
+        <div id="status-info"></div>
+        <table id="game-board">
+            <tr>
+                <td id="cell-0"></td>
+                <td id="cell-1"></td>
+                <td id="cell-2"></td>
+            </tr>
+            <tr>
+                <td id="cell-3"></td>
+                <td id="cell-4"></td>
+                <td id="cell-5"></td>
+            </tr>
+            <tr>
+                <td id="cell-6"></td>
+                <td id="cell-7"></td>
+                <td id="cell-8"></td>
+            </tr>
+        </table>
+    </div>
+<script src="http://code.jquery.com/jquery-2.1.0.min.js"></script>
+<script>
+$(function() {
+
+    var gameId;
+    var authId;
+    var type;
+    var lastRendered;
+    var lastStatus;
+    var isYourTurn = false;
+
+    // Load the divs
+    var connectInfoDiv = $('#connection-info');
+    var gameContentDiv = $('#game-content');
+    var gameBoardTable = $('#game-board');
+    var statusInfoDiv = $('#status-info');
+    var cells = [];
+    var clickHandler = function() {
+        // If it was our turn, send the move
+        if (isYourTurn && $(this).text() == '') {
+            var move = 
+            $.getJSON('http://localhost/move/' + gameId + '/' + authId + '/' + this.id.split('-')[1], function(data) {
+
+            }).error(function(){});
+        }
+    }
+    for (var i = 0; i < 9; i++) {
+        cells.push($('#cell-' + i));
+        cells[i].on('click', clickHandler);
+    }
+
+    function renderTable(board) {
+        if (lastRendered == board) return;
+        lastRendered = board;
+        for (i = 0; i < 9; i++) {
+            if (board.charAt(i) != '.') {
+                cells[i].text(board.charAt(i));
+            }
+        }
+    }
+
+    function renderStatus(status) {
+        if (lastStatus == status) return;
+        lastStatus = status;
+        statusInfoDiv.html('Status: ' + status);
+    }
+
+    function pollRequest() {
+        $.getJSON('http://localhost/status/' + gameId, function(data) {
+            renderTable(data['value']['board']);
+            renderStatus(data['value']['status']);
+            // Check if it is our turn!
+            isYourTurn = (data['value']['status'] == 'waiting-' + type)
+            // Keep on polling until game is over
+            if (!(data['value']['status'] == 'win-x' ||
+                  data['value']['status'] == 'win-o' ||
+                  data['value']['status'] == 'draw')) {
+                setTimeout(pollRequest, 500)
+            }
+        });
+    }
+
+    gameId = prompt("Enter game ID");
+
+    $.getJSON('http://localhost/connect/' + gameId, function(data) {
+        authId = data['value']['key'];
+        type = data['value']['type'];
+
+        connectInfoDiv.html('Connected to: <b>' + gameId + '</b><br/>' + 
+            'Using auth key: <b>' + authId + '</b><br/>' +
+            'Playing as: <b>' + type + '</b>');
+
+        // Start polling
+        pollRequest();
+    }).error(function(res) {
+        connectInfoDiv.html("Error occured: " + res.responseJSON['value']);
+        gameContentDiv.remove();
+    });
+});
+</script>
+</body>
+</html>

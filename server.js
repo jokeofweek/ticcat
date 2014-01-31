@@ -15,6 +15,7 @@ if (isNaN(port)) {
 
 var app = express();
 routes.setupRoutes(app);
+app.use('/', express.static(__dirname + '/static'));
 app.listen(port);
 
 console.log("Ticcat now listening on " + port);
