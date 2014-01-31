@@ -34,7 +34,6 @@ var rowCallbacks = [];
 for (var i = 0; i < Constants.MAX_SIZE; i++) {
   (function(row) {
     rowCallbacks.push(function(board, size, x) {
-      console.log((row * size) + x);
       return board[(row * size) + x];
     });
   })(i);
