@@ -45,12 +45,15 @@ function hasSpace(id) {
 }
 
 function reserveSlot(id) {
-  var key = generateTurnKey();
-
   // If there's no space, return null
   if (games[id].keys.length == 2) {
     return null;
   }
+
+  var key;
+  do {
+    key = generateTurnKey();
+  } while (games[id].keys.length == 0 || games[id].keys[0] != key);
 
   games[id].keys.push(key);
 
