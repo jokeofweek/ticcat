@@ -1,12 +1,20 @@
-var util = require('./util.js');
+var express = require('express');
+var routes = require('./routes.js');
 
-var board = util.createBoard(4);
+if (process.argv.length < 3) {
+  console.log("Invalid usage: node server.js <PORT>");
+  process.exit();
+}
 
-var i = 0;
-board[0] = util.SLOT.CROSS;
-board[5] = util.SLOT.CROSS;
-board[10] = util.SLOT.CROSS;
-board[15] = util.SLOT.CROSS;
+var port = parseInt(process.argv[2]);
 
-console.log(util.formatBoard(board));
-console.log(util.getWinResult(board));
+if (isNaN(port)) {
+  console.log("Port must be numeric.");
+  process.exit();
+}
+
+var app = express();
+routes.setupRoutes(app);
+app.listen(port);
+
+console.log("Ticcat now listening on " + port);
