@@ -1,10 +1,10 @@
 # Ticcat 
 
 ## What is Ticcat?
-Ticcat is a simple Tic-Tac-Toe-over-HTTP server. It provides an API for letting two clients connect and play a game of tic-tac-toe on an arbitrary sized board all over HTTP. All API requests should respond with some JSON indicating either an error or success.
+Ticcat is a simple Tic-Tac-Toe-over-HTTP server. It provides an API for letting two clients connect and play a game of tic-tac-toe all over HTTP. All API requests should respond with some JSON indicating either an error or success.
 
 ## Why?
-I'm taking an AI class and wanted to test out various Tic-Tac-Toe strategies on boards which were larger than 3x3. I also wanted to be able to play against an AI as well as pit various AIs against each other.
+I'm taking an AI class and wanted to test out minimax on a simple game that I could play, so I figured Tic-Tac-Toe would be an easy game to setup. I also wanted to be able to play against an AI as well as pit various AIs against each other.
 
 ## Server Setup
 To get the server running, simply clone this repo:
@@ -25,7 +25,7 @@ To create a game, send a request to:
 
     http://<url>/create/<size>
 
-In this case, __size__ is a required numerical parameter, indicating the size of the board (eg. 3 for 3x3, 7 for 7x7, etc.). If the URL is called correctly, a response of the following format will be received:
+In this case, __size__ is a required numerical parameter, indicating the size of the board (eg. 3 for 3x3, 4 for 4x4, etc.). If the URL is called correctly, a response of the following format will be received:
 
 
     {
@@ -132,7 +132,33 @@ Is represented as
 
 ## Making a Move
 
-This is in the works!
+In order to make a move, you send a request as follows:
+
+    http://<url>/move/<game-id>/<turn-key>/<move>
+    
+You have to pass the game-id and turn-key in order to specify what game you wish to make a move on. You then have to specify the cell you'd like to place a stone on in move. The __move__ argument accepts an integer representing the position in the board string you'd like to place your move. These positions are 0-indexed, so a 3x3 game can accept values from 0 to 8 inclusively for the move field. If your move was accepted, you will receive an updated status of the game.
+
+### Example
+
+Suppose you want to place your stone in the only free cell in this board:
+
+    oxo
+    .xx
+    xoo
+
+You would send the following request:
+
+    http://<url>/move/<game-id>/<turn-key>/3
+
+As the free cell is at index 3 in this board string:
+
+        oxo.xxxoo
+
+You would send the following request:
+
+## Checking When It's Your Turn
+
+In order to check when it's your turn, the simplest solution at the moment is to poll the status page until you see the appropriate "waiting\*" status (or win\*/draw).
 
 ## Notes & Issues
 
