@@ -32,6 +32,30 @@ function statusRoute(req, res) {
   send(res, GameStore.getGameStatus(gameId));
 };
 
+function moveRoute(req, res) {
+  // Ensure the move is within range
+  var move = parseInt(req.params.move);
+  var gameId = req.params.gameId;
+  var size = GameStore.getGameSize(gameId);
+  if (move >= size * size) {
+    sendError(res, 'Move out of range. Allowable move range: [0, ' + ((size*size) - 1) + ']');
+    return;
+  }
+
+  // Ensure it is the right turn
+  if (!GameStore.isTurn(gameId, req.params.authId)) {
+    sendError(res, 'It is not currently your turn or the auth key was invalid.');
+    return;
+  } 
+
+  // Try to apply the move
+  if (GameStore.applyMove(gameId, req.params.authId, move)) {
+    send(res, GameStore.getGameStatus(gameId));
+  } else {
+    sendError(res, 'The move was not valid.');
+  }
+};
+
 var setupRoutes = function(app) {
   // Only accept numeric sizes
   app.param('size', function(req, res, next, size) {
@@ -54,9 +78,22 @@ var setupRoutes = function(app) {
     }
   });
 
+  // Only numeric moves
+  app.param('move', function(req, res, next, size) {
+    var parsedSize = parseInt(size);
+    if (isNaN(parsedSize)) {
+      sendError(res, 'Non-numeric move.');
+    } else if (parsedSize < 0) {
+      sendError(res, 'Move must be a positive number');
+    } else {
+      next();
+    }
+  });
+
   app.get('/create/:size', createRoute);
   app.get('/connect/:gameId', connectRoute);
   app.get('/status/:gameId', statusRoute);
+  app.get('/move/:gameId/:authId/:move', moveRoute);
 };
 
 module.exports = {

@@ -53,7 +53,7 @@ function reserveSlot(id) {
   var key;
   do {
     key = generateTurnKey();
-  } while (games[id].keys.length == 0 || games[id].keys[0] != key);
+  } while (games[id].keys.length != 0 && games[id].keys[0] == key);
 
   games[id].keys.push(key);
 
@@ -81,9 +81,67 @@ function getGameStatus(id) {
   };
 }
 
+function getGameSize(id) {
+  return Math.sqrt(games[id].board.length);
+}
+
+function isTurn(id, key) {
+  // Try to find the key in keys
+  var requiredStatus = null;
+  if (games[id].keys[0] == key) {
+    requiredStatus = GAME_STATUS.WAITING_CIRCLE;
+  } else if (games[id].keys[1] == key) {
+    requiredStatus = GAME_STATUS.WAITING_CROSS;
+  }
+  return games[id].status == requiredStatus;
+}
+
+function applyMove(id, key, move) {
+  // Make sure there isn't already a piece there
+  if (games[id].board[move] != util.SLOT.NOTHING) {
+    return false;
+  }
+
+  // Apply the move and chnage the game status
+  var newStatus;
+  var slotToUse;
+  if (games[id].keys[0] == key) {
+    newStatus = GAME_STATUS.WAITING_CROSS;
+    slotToUse = util.SLOT.CIRCLE;
+  } else if (games[id].keys[1] == key) {
+    newStatus = GAME_STATUS.WAITING_CIRCLE;
+    slotToUse = util.SLOT.CROSS;
+  }
+
+  games[id].board[move] = slotToUse;
+
+  // Check for a win 
+  var winResult = util.getWinResult(games[id].board);
+  if (winResult) {
+    // Change the status depending on the win result
+    if (winResult == util.WIN_RESULT.DRAW) {
+      newStatus = GAME_STATUS.DRAW;
+    } else if (winResult == util.WIN_RESULT.CIRCLE) {
+      newStatus = GAME_STATUS.WIN_CIRCLE;
+    } else if (winResult == util.WIN_RESULT.CROSS) {
+      newStatus = GAME_STATUS.WIN_CROSS;
+    }
+  }
+
+  // Update the status
+  games[id].status = newStatus;
+
+  // Return true to signify move was applied properly
+  return true;
+
+}
+
 module.exports = {
   'createGame': createGame,
   'gameExists': gameExists,
   'reserveSlot': reserveSlot,
-  'getGameStatus': getGameStatus
+  'getGameStatus': getGameStatus,
+  'getGameSize': getGameSize,
+  'isTurn': isTurn,
+  'applyMove': applyMove
 };
