@@ -1,4 +1,5 @@
 var crypto = require('crypto');
+var fs = require('fs');
 
 var games = {};
 var gameTypes = {};
@@ -22,9 +23,9 @@ module.exports = {
    * Instantiates all of the game types.
    */
   'loadGameTypes': function() {
-    var files = ['tictactoe.js'];
-    files.forEach(function(file) {
+    fs.readdirSync('./games/').forEach(function(file) {
       // Load the game and add it to the game types object.
+      console.log("Loading game: " + file);
       var loaded = require('./games/' + file);
       gameTypes[loaded.gameName] = loaded;
     });
