@@ -1,10 +1,15 @@
 # Ticcat 
 
 ## What is Ticcat?
-Ticcat is a simple Tic-Tac-Toe-over-HTTP server. It provides an API for letting two clients connect and play a game of tic-tac-toe all over HTTP. All API requests should respond with some JSON indicating either an error or success.
+Ticcat is a simple Game-over-HTTP server. It provides an API for letting a number of clients connect and play a game over HTTP. All API requests should respond with some JSON indicating either an error or success.
 
 ## Why?
-I'm taking an AI class and wanted to test out minimax on a simple game that I could play, so I figured Tic-Tac-Toe would be an easy game to setup. I also wanted to be able to play against an AI as well as pit various AIs against each other.
+I'm taking an AI class this semester and will need to test a number of AI clients, so I figured it'd be nice to have a simple server which would let me pit players against AIs as well as AIs against each other. I also wanted it to be easy to add new games to the server and to support games with different numbers of players.
+
+### Included Games
+At the moment, I've added the following games:
+
+- Tic-tac-toe (2 player, 3x3 grid)
 
 ## Server Setup
 To get the server running, simply clone this repo:
@@ -19,13 +24,21 @@ Finally to start the server on port 8000:
 
     node server.js 8000
 
+## Listing Available Games
+
+In order to list the available games, send a request to:
+
+    http://<url>/games
+
+This will list the names of all available games. These are loaded from the _games_ folder when the server is started.
+
 ## Game Creation
 
 To create a game, send a request to:
 
-    http://<url>/create/<size>
+    http://<url>/create/<game-name>
 
-In this case, __size__ is a required numerical parameter, indicating the size of the board (eg. 3 for 3x3, 4 for 4x4, etc.). If the URL is called correctly, a response of the following format will be received:
+In this case, __game-name__ is the name of the game you wish to start (eg. tictactoe). If the game name is valid, a response of the following format will be received:
 
 
     {
@@ -43,17 +56,17 @@ In order to connect to a game, send a request to:
 
     http://<url>/connect/<game-id>
 
-In this case, __game\-id__ is the ID returned in game creation. Note that the first player that connects will be assigned circles (first move) and the second that connects will be assigned crosses (second move). A succesfull connection will return a message like this:
+In this case, __game\-id__ is the ID returned in game creation. A successful connection will return a message like this:
 
     {
       "type": "ok",
       "value": {
-        "key": "<turn-key>",
-        "type": "<player-type>"
+        "key": <turn-key>,
+        "playerIndex": <player-index>
       }
     }
 
-This response has two important parts. The first is the __key__ value. This is your "password" for the game, and you will need to send this whenever you send a move so that the server knows which player the move is for. The second is the __type__, which will either be 'o' or 'x' and lets you know whether you are controlling circles or crosses.
+This response has two important parts. The first is the __key__ value. This is your "password" for the game, and you will need to send this whenever you send a move so that the server knows which player the move is for. The second is the __playerIndex__, which lets you know what your player number is (beginning at 0, so second player would have index 1).
 
 If the game does not exist, you will receive this error:
 
@@ -73,62 +86,47 @@ If the game is full, you will receive the following error:
 
 In order to check the status of a game, send a request to:
 
-    http://<url>/status/<game-id>
+    http://<url>/status/<game-id>/<turn-key>
 
 If the game exists, you will receive a message in the following format:
 
     {
       "type": "ok",
       "value": {
-        "board": "<board-string>",
-        "status": "<status>"
+        "status": <status>,
+        "state": {<game-state>}
       }
     }
 
-This gives you two important pieces of information. The first is the __board-string__, which represents the current state of the board. It's format is described in the next section of this readme.
+This gives you two important pieces of information. The first is the status of the game, which I will list in a second. The second is the game-specific state, eg. the current board in a game of tic-tac-toe.
 
-The second is the current status of the game, which can take the following values:
+The status can have one of the following values:
 
--  'setup' - The game is waiting for both players to connect.
-- 'waiting-o' - It is 'o's turn to make a move.
-- 'waiting-x' - It is 'x's turn to make a move.
+- 'setup' - The game is waiting for players to connect.
+- 'playing' - The game is ongoing. An extra value will be present called 'currentPlayer' which shows the player index of the player whose turn it is.
 - 'draw' - The game is over and resulted in a tie.
-- 'win-o' - The 'o' player won.
-- 'win-x' - The 'x' player won.
+- 'win' - The game is over and a player won. An extra value will be present called 'winningPlayer' which shows the player index of the player who won.
 
-## The Board String
-The board string represents the current state of the board. Every cell is represented by one of the following 3 characters:
+### Tic-Tac-Toe Example
 
-- . - No one has picked this cell.
-- o - The 'o' player has made a move on this cell.
-- x - The 'x' player has made a move on this cell.
+Suppose you send a status request and receive this response in a game of tic-tac-toe:
 
-The board string is simply the concatenation of every row, starting from the top left and going from the left cell to the right cell. 
+    {
+      "type": "ok",
+      "value": {
+        "status": "playing",
+        "state": {
+          "board": "o..oxx.ox"
+        },
+        "currentPlayer": 0
+      }
+    }
 
-### Example 1
+This signifies that the game is ongoing and it is player 0's turn. The state for tic-tac-toe only consists of the board. In this case, the board string corresponds to this board:
 
-The following board:
-
-    oxo
-    ox.
-    x..
-
-Is represented as:
-
-    oxoox.x..
-
-### Example 2
-
-The following board:
-
-    ooox
-    ..x.
-    .x.o
-    ....
-
-Is represented as
-
-    ooox..x..x.o....
+    o..
+    oxx
+    .ox
 
 ## Making a Move
 
@@ -136,9 +134,11 @@ In order to make a move, you send a request as follows:
 
     http://<url>/move/<game-id>/<turn-key>/<move>
     
-You have to pass the game-id and turn-key in order to specify what game you wish to make a move on. You then have to specify the cell you'd like to place a stone on in move. The __move__ argument accepts an integer representing the position in the board string you'd like to place your move. These positions are 0-indexed, so a 3x3 game can accept values from 0 to 8 inclusively for the move field. If your move was accepted, you will receive an updated status of the game.
+You have to pass the game-id and turn-key in order to specify what game you wish to make a move on. The last part, the __move__ argument, is a string specific to a game describing the move you would like to make. If your move was valid, you will receive an updated status of the game.
 
-### Example
+### Tic-Tac-Toe Example
+
+For the Tic-Tac-Toe example, the  __move__ argument accepts an integer representing the position in the board string you'd like to place your move. These positions are 0-indexed, so a 3x3 game can accept values from 0 to 8 inclusively for the move field. 
 
 Suppose you want to place your stone in the only free cell in this board:
 
@@ -158,7 +158,7 @@ You would send the following request:
 
 ## Checking When It's Your Turn
 
-In order to check when it's your turn, the simplest solution at the moment is to poll the status page until you see the appropriate "waiting\*" status (or win\*/draw).
+In order to check when it's your turn, the simplest solution at the moment is to poll the status page until you see the appropriate "playing" status and the currentPlayer is set to your player index.
 
 ## Notes & Issues
 

@@ -103,8 +103,8 @@ $(function() {
 
     $.getJSON('http://localhost/connect/' + gameId, function(data) {
         turnKey = data.value.key;
-        playerSymbol = data.value.playerSymbol;
         playerIndex = data.value.playerIndex;
+        playerSymbol = playerIndex == 0 ? 'o' : 'x';
 
         connectInfoDiv.html('Connected to: <b>' + gameId + '</b><br/>' + 
             'Using auth key: <b>' + turnKey + '</b><br/>' +

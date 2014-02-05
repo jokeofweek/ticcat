@@ -39,9 +39,6 @@ module.exports = {
   'getNextPlayer': function(playerIndex) {
     return (playerIndex + 1) % 2;
   },
-  'getPlayerSymbol': function(playerIndex) {
-    return playerSymbols[playerIndex];
-  },
   'applyMove': function(gameState, playerIndex, moveString) {
     // Make sure the move string is actually an integer.
     var move = parseInt(moveString);

@@ -31,6 +31,12 @@ module.exports = {
     });
   },
   /**
+   * @return {array} A list containing all the game types.
+   */
+  'getGameTypes': function() {
+    return Object.keys(gameTypes);
+  },
+  /**
    * This function instantiates a new game of a given type.
    * @param  {string} type The type of the game
    * @return {string?}      The ID of the game if it was succesfully created,
@@ -104,9 +110,7 @@ module.exports = {
       // The turn key for the player
       key: key,
       // The number of the player
-      playerIndex: playerIndex,
-      // The symbol of the player
-      playerSymbol: gameTypes[games[gameId].type].getPlayerSymbol(playerIndex)
+      playerIndex: playerIndex
     };
   },
   /**

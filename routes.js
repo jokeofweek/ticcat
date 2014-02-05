@@ -10,6 +10,10 @@ function send(res, obj, code) {
   res.send(code, {type: 'ok', value: obj});
 }
 
+function gamesRoute(req, res) {
+  send(res, GameStore.getGameTypes());
+}
+
 function createRoute(req, res) {
   // Attempt to create a new game.
   var id = GameStore.createGame(req.params.type);
@@ -63,6 +67,8 @@ var setupRoutes = function(app) {
     }
   });
 
+
+  app.get('/games', gamesRoute);
   app.get('/create/:type', createRoute);
   app.get('/connect/:gameId', connectRoute);
   app.get('/status/:gameId/:turnKey', statusRoute);
