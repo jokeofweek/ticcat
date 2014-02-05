@@ -122,25 +122,27 @@ module.exports = {
    *                              player.
    */
   'getGameStatus': function(gameId, turnKey) {
+    var game = games[gameId];
     // Ensure the turnkey is valid.
-    if (games[gameId].keys.indexOf(turnKey) == -1) {
+    if (game.keys.indexOf(turnKey) == -1) {
       return null;
     }
 
     // Build the basic status object.
     var obj = {
-      status: games[gameId].status,
-      state: gameTypes[games[gameId].type].getStatus(games[gameId].state, turnKey)
+      status: game.status,
+      state: gameTypes[game.type].getStatus(game.state, 
+          game.keys.indexOf(turnKey))
     };
 
     // If the game is playing, we need to add the current player.
-    if (games[gameId].status == STATUS.PLAYING) {
-      obj.currentPlayer = games[gameId].currentPlayer
+    if (game.status == STATUS.PLAYING) {
+      obj.currentPlayer = game.currentPlayer
     }
 
     // If the game is over, we need to add the winning player.
-    if (games[gameId].status == STATUS.WIN) {
-      obj.winningPlayer = games[gameId].currentPlayer;
+    if (game.status == STATUS.WIN) {
+      obj.winningPlayer = game.currentPlayer;
     }
     
     return obj;
