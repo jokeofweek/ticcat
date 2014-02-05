@@ -32,6 +32,11 @@ In order to list the available games, send a request to:
 
 This will list the names of all available games. These are loaded from the _games_ folder when the server is started.
 
+### Creating a New Game Type
+
+In order to create a new game type, you must add a new file to the _games_ folder. For the functions that your module should export, 
+see games/tictactoe.js.
+
 ## Game Creation
 
 To create a game, send a request to:
