@@ -1,147 +1,183 @@
 var crypto = require('crypto');
-var util = require('./util.js');
-
-var GAME_STATUS = {
-  WIN_CIRCLE: 'win-o',
-  WIN_CROSS: 'win-x',
-  DRAW: 'draw',
-  WAITING_CIRCLE: 'waiting-o',
-  WAITING_CROSS: 'waiting-x',
-  SETUP: 'setup'
-};
-Object.freeze(GAME_STATUS);
 
 var games = {};
+var gameTypes = {};
 
 var counter = 0;
 
+var STATUS = {
+  SETUP: 'setup',
+  PLAYING: 'playing',
+  DRAW: 'draw',
+  WIN: 'win'
+};
+Object.freeze(STATUS);
 
 function generateTurnKey() {
   return crypto.createHash('md5').update('turn' + (counter++) + new Date().getTime() + '' + Math.round((Math.random() * 20000))).digest('hex');
 };
 
-function createGame(size) {
-  var id = '';
-  // Generate IDs until we hit one that isn't used.
-  do {
-    id = crypto.createHash('md5').update('game' + new Date().getTime() + '' + Math.round((Math.random() * 20000))).digest('hex');
-  } while (games[id]);
-
-  games[id] = {
-    // The actual game board
-    board: util.createBoard(size),
-    // The turn keys (the first represents the turn that we are waiting for).
-    // If less than 2 turn keys, than not all players are connected.
-    keys: [],
-    // The status of the game.
-    status: GAME_STATUS.SETUP
-  };
-
-  return id;
-}
-
-function hasSpace(id) {
-  return games[id].keys.length != 2;
-}
-
-function reserveSlot(id) {
-  // If there's no space, return null
-  if (games[id].keys.length == 2) {
-    return null;
-  }
-
-  var key;
-  do {
-    key = generateTurnKey();
-  } while (games[id].keys.length != 0 && games[id].keys[0] == key);
-
-  games[id].keys.push(key);
-
-  // If both slots are taken, change the status to waiting for circle move
-  if (games[id].keys.length == 2) {
-    games[id].status = GAME_STATUS.WAITING_CIRCLE;
-  }
-
-  return {
-    // The turn key for the player
-    key: key,
-    // The type of the player (circle is first connection)
-    type: games[id].keys.length == 2 ? util.SLOT.CROSS : util.SLOT.CIRCLE
-  };
-}
-
-function gameExists(id) {
-  return games[id] ? true : false;
-}
-
-function getGameStatus(id) {
-  return {
-    board: util.formatBoard(games[id].board),
-    status: games[id].status
-  };
-}
-
-function getGameSize(id) {
-  return Math.sqrt(games[id].board.length);
-}
-
-function isTurn(id, key) {
-  // Try to find the key in keys
-  var requiredStatus = null;
-  if (games[id].keys[0] == key) {
-    requiredStatus = GAME_STATUS.WAITING_CIRCLE;
-  } else if (games[id].keys[1] == key) {
-    requiredStatus = GAME_STATUS.WAITING_CROSS;
-  }
-  return games[id].status == requiredStatus;
-}
-
-function applyMove(id, key, move) {
-  // Make sure there isn't already a piece there
-  if (games[id].board[move] != util.SLOT.NOTHING) {
-    return false;
-  }
-
-  // Apply the move and chnage the game status
-  var newStatus;
-  var slotToUse;
-  if (games[id].keys[0] == key) {
-    newStatus = GAME_STATUS.WAITING_CROSS;
-    slotToUse = util.SLOT.CIRCLE;
-  } else if (games[id].keys[1] == key) {
-    newStatus = GAME_STATUS.WAITING_CIRCLE;
-    slotToUse = util.SLOT.CROSS;
-  }
-
-  games[id].board[move] = slotToUse;
-
-  // Check for a win 
-  var winResult = util.getWinResult(games[id].board);
-  if (winResult) {
-    // Change the status depending on the win result
-    if (winResult == util.WIN_RESULT.DRAW) {
-      newStatus = GAME_STATUS.DRAW;
-    } else if (winResult == util.WIN_RESULT.CIRCLE) {
-      newStatus = GAME_STATUS.WIN_CIRCLE;
-    } else if (winResult == util.WIN_RESULT.CROSS) {
-      newStatus = GAME_STATUS.WIN_CROSS;
-    }
-  }
-
-  // Update the status
-  games[id].status = newStatus;
-
-  // Return true to signify move was applied properly
-  return true;
-
-}
-
 module.exports = {
-  'createGame': createGame,
-  'gameExists': gameExists,
-  'reserveSlot': reserveSlot,
-  'getGameStatus': getGameStatus,
-  'getGameSize': getGameSize,
-  'isTurn': isTurn,
-  'applyMove': applyMove
-};
+  /**
+   * Instantiates all of the game types.
+   */
+  'loadGameTypes': function() {
+    var files = ['tictactoe.js'];
+    files.forEach(function(file) {
+      // Load the game and add it to the game types object.
+      var loaded = require('./games/' + file);
+      gameTypes[loaded.gameName] = loaded;
+    });
+  },
+  /**
+   * This function instantiates a new game of a given type.
+   * @param  {string} type The type of the game
+   * @return {string?}      The ID of the game if it was succesfully created,
+   *                            else null if no such game type exists.
+   */
+  'createGame': function(type) {
+    // Make sure the type exists, else we have an error
+    if (!gameTypes[type]) {
+      return null;
+    }
+
+    // Generate the game ID.
+    var id = '';
+    // Generate IDs until we hit one that isn't used.
+    do {
+      id = crypto.createHash('md5').update('game' + new Date().getTime() + '' + Math.round((Math.random() * 20000))).digest('hex');
+    } while (games[id]);
+
+    // Create the actual game
+    games[id] = {
+      type: type,
+      // The array of player turn keys
+      keys: [],
+      // The index of the current player, or if the game has been won,
+      // the index of the winner.
+      currentPlayer: 0,
+      // The status of the game
+      status: STATUS.SETUP,
+      // The actual state
+      state: gameTypes[type].createGame()
+    }
+
+    return id;
+  },
+  /**
+   * Tests whether a given game actually exists
+   * @param  {string} gameId The ID of the game.
+   * @return {boolean}        True if a game exists with that gameId, else false
+   */
+  'gameExists': function(gameId) {
+    return games[gameId] ? true : false;
+  },
+  /**
+   * This function attempts to reserve a player slot in a game.
+   * @param  {string} gameId The ID of the game
+   * @return {object?}        Either an object containing the key and the
+   *                                 player number, or null if there was no space.
+   */
+  'reserveSlot': function(gameId) {
+    // Make sure there is space for another player
+    if (games[gameId].keys.length == gameTypes[games[gameId].type].totalPlayers) {
+      return null;
+    }
+
+    // Keep on generating a turnkey until we find an unused one
+    var key;
+    do {
+      key = generateTurnKey();
+    } while (games[gameId].keys.indexOf(key) != -1);
+
+    // Add it to the set of keys
+    games[gameId].keys.push(key);
+
+    // If there are no more keys, update it to playing.
+    if (games[gameId].keys.length == gameTypes[games[gameId].type].totalPlayers) {
+      games[gameId].status = STATUS.PLAYING;
+    }
+
+    var playerIndex =  games[gameId].keys.length - 1;
+    return {
+      // The turn key for the player
+      key: key,
+      // The number of the player
+      playerIndex: playerIndex,
+      // The symbol of the player
+      playerSymbol: gameTypes[games[gameId].type].getPlayerSymbol(playerIndex)
+    };
+  },
+  /**
+   * Fetches the given game status for a player.
+   * @param  {string} gameId  The ID of the game.
+   * @param  {string} turnKey The turn key of the player
+   * @return {object?}         An object describing the current game state
+   *                              for that player, or null if there is no such
+   *                              player.
+   */
+  'getGameStatus': function(gameId, turnKey) {
+    // Ensure the turnkey is valid.
+    if (games[gameId].keys.indexOf(turnKey) == -1) {
+      return null;
+    }
+
+    // Build the basic status object.
+    var obj = {
+      status: games[gameId].status,
+      state: gameTypes[games[gameId].type].getStatus(games[gameId].state, turnKey)
+    };
+
+    // If the game is playing, we need to add the current player.
+    if (games[gameId].status == STATUS.PLAYING) {
+      obj.currentPlayer = games[gameId].currentPlayer
+    }
+
+    // If the game is over, we need to add the winning player.
+    if (games[gameId].status == STATUS.WIN) {
+      obj.winningPlayer = games[gameId].currentPlayer;
+    }
+    
+    return obj;
+  },
+  /**
+   * Checks whether it is a given player's turn to play in a game.
+   * @param  {string} gameId  The game ID.
+   * @param  {string} turnKey The turn key for that player.
+   * @return {boolean}         True if it is that player's turn to play, else false.
+   */
+  'isTurn': function(gameId, turnKey) {
+    return games[gameId].status == STATUS.PLAYING &&
+        games[gameId].keys.indexOf(turnKey) == games[gameId].currentPlayer;
+  },
+  /**
+   * This function allows a player to make a move for a given game.
+   * @param  {string} gameId     The game ID.
+   * @param  {string} turnKey    The turn key for the player.
+   * @param  {string} moveString The string representing the move.
+   * @return {boolean}            True if the move was valid, else false.
+   */
+  'applyMove': function(gameId, turnKey, moveString) {
+    var game = games[gameId];
+    var gameType = gameTypes[game.type];
+    // Try to apply the move
+    if (!gameType.applyMove(game.state, game.keys.indexOf(turnKey),
+        moveString)) {
+      return false;
+    }
+
+    // Check if the game is over, updating accordingly
+    if (gameType.isGameOver(game.state)) {
+      // Set the winner if there is one
+      game.currentPlayer = gameType.getWinner(game.state);
+      game.status = (game.currentPlayer != -1) ? 
+          STATUS.WIN : STATUS.DRAW;
+    } else {
+      // Simply move on to the next player
+      game.currentPlayer = gameType.getNextPlayer(games[gameId].currentPlayer);
+    }
+
+    // Move was succesfully applied!
+    return true;
+  }
+}

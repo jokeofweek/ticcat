@@ -1,4 +1,3 @@
-var Constants = require('./constants.js');
 var GameStore = require('./gamestore.js');
 
 function sendError(res, error, code) {
@@ -12,8 +11,13 @@ function send(res, obj, code) {
 }
 
 function createRoute(req, res) {
-  var id = GameStore.createGame(parseInt(req.params.size));
-  send(res, {id: id});
+  // Attempt to create a new game.
+  var id = GameStore.createGame(req.params.type);
+  if (!id) {
+    sendError(res, 'Invalid game type.');
+  } else {
+    send(res, {id: id});
+  }
 }
 
 function connectRoute(req, res) {
@@ -28,46 +32,27 @@ function connectRoute(req, res) {
 }
 
 function statusRoute(req, res) {
-  var gameId = req.params.gameId;
-  send(res, GameStore.getGameStatus(gameId));
+  send(res, GameStore.getGameStatus(req.params.gameId, req.params.turnKey));
 };
 
 function moveRoute(req, res) {
-  // Ensure the move is within range
-  var move = parseInt(req.params.move);
-  var gameId = req.params.gameId;
-  var size = GameStore.getGameSize(gameId);
-  if (move >= size * size) {
-    sendError(res, 'Move out of range. Allowable move range: [0, ' + ((size*size) - 1) + ']');
-    return;
-  }
-
   // Ensure it is the right turn
-  if (!GameStore.isTurn(gameId, req.params.authId)) {
+  if (!GameStore.isTurn(req.params.gameId, req.params.turnKey)) {
     sendError(res, 'It is not currently your turn or the auth key was invalid.');
     return;
   } 
 
   // Try to apply the move
-  if (GameStore.applyMove(gameId, req.params.authId, move)) {
-    send(res, GameStore.getGameStatus(gameId));
+  if (GameStore.applyMove(req.params.gameId, req.params.turnKey, req.params.move)) {
+    send(res, GameStore.getGameStatus(req.params.gameId));
   } else {
     sendError(res, 'The move was not valid.');
   }
 };
 
 var setupRoutes = function(app) {
-  // Only accept numeric sizes
-  app.param('size', function(req, res, next, size) {
-    var parsedSize = parseInt(size);
-    if (isNaN(parsedSize)) {
-      sendError(res, 'Non-numeric size.');
-    } else if (parsedSize < Constants.MIN_SIZE || parsedSize > Constants.MAX_SIZE) {
-      sendError(res, 'Size out of range. Allowable board sizes: [' + Constants.MIN_SIZE + ', ' + Constants.MAX_SIZE + ']');
-    } else {
-      next();
-    }
-  });
+  // Load the games
+  GameStore.loadGameTypes();
 
   // Only accept game IDs which exist
   app.param('gameId', function(req, res, next, gameId) {
@@ -78,22 +63,10 @@ var setupRoutes = function(app) {
     }
   });
 
-  // Only numeric moves
-  app.param('move', function(req, res, next, size) {
-    var parsedSize = parseInt(size);
-    if (isNaN(parsedSize)) {
-      sendError(res, 'Non-numeric move.');
-    } else if (parsedSize < 0) {
-      sendError(res, 'Move must be a positive number');
-    } else {
-      next();
-    }
-  });
-
-  app.get('/create/:size', createRoute);
+  app.get('/create/:type', createRoute);
   app.get('/connect/:gameId', connectRoute);
-  app.get('/status/:gameId', statusRoute);
-  app.get('/move/:gameId/:authId/:move', moveRoute);
+  app.get('/status/:gameId/:turnKey', statusRoute);
+  app.get('/move/:gameId/:turnKey/:move', moveRoute);
 };
 
 module.exports = {

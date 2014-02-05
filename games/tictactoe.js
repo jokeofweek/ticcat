@@ -39,25 +39,37 @@ module.exports = {
   'getNextPlayer': function(playerIndex) {
     return (playerIndex + 1) % 2;
   },
-  'applyMove': function(game, playerIndex, moveString) {
+  'getPlayerSymbol': function(playerIndex) {
+    return playerSymbols[playerIndex];
+  },
+  'applyMove': function(gameState, playerIndex, moveString) {
     // Make sure the move string is actually an integer.
     var move = parseInt(moveString);
     if (isNaN(move)) {
       return false;
     }
     // Make sure the move is in a valid location
-    if (move < 0 || move >= 9 || game.board[move] != '.') {
+    if (move < 0 || move >= 9 || gameState.board[move] != '.') {
       return false;
     }
-    // Update the game's board to reflect this change.
-    game.board[move] = playerSymbols[playerIndex];
+    // Update the gameState's board to reflect this change.
+    gameState.board[move] = playerSymbols[playerIndex];
+    return true;
   },
-  'isGameOver': function(game) {
+  'isGameOver': function(gameState) {
     // Check if there is no remaining empty tiles.
-    if (game.board.indexOf('.') == -1) {
+    if (gameState.board.indexOf('.') == -1) {
       return true;
     }
-    // Check if anyone won the game
-    return (findWinner(game.board)) != -1;
+    // Check if anyone won the gameState
+    return (findWinner(gameState.board)) != -1;
+  },
+  'getWinner': function(gameState) {
+    return findWinner(gameState.board);
+  },
+  'getStatus': function(gameState, turnKey) {
+    return {
+      'board': gameState.board.join('')
+    }
   }
 };

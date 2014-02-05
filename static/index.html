@@ -42,8 +42,9 @@
 $(function() {
 
     var gameId;
-    var authId;
-    var type;
+    var turnKey;
+    var playerIndex;
+    var playerSymbol;
     var lastRendered;
     var lastStatus;
     var isYourTurn = false;
@@ -58,7 +59,7 @@ $(function() {
         // If it was our turn, send the move
         if (isYourTurn && $(this).text() == '') {
             var move = 
-            $.getJSON('http://localhost/move/' + gameId + '/' + authId + '/' + this.id.split('-')[1], function(data) {
+            $.getJSON('http://localhost/move/' + gameId + '/' + turnKey + '/' + this.id.split('-')[1], function(data) {
 
             }).error(function(){});
         }
@@ -85,15 +86,14 @@ $(function() {
     }
 
     function pollRequest() {
-        $.getJSON('http://localhost/status/' + gameId, function(data) {
-            renderTable(data['value']['board']);
-            renderStatus(data['value']['status']);
+        $.getJSON('http://localhost/status/' + gameId + '/' + turnKey, function(data) {
+            renderTable(data.value.state.board);
+            renderStatus(data.value.status);
             // Check if it is our turn!
-            isYourTurn = (data['value']['status'] == 'waiting-' + type)
+            isYourTurn = (data.value.status == 'playing' && data.value.currentPlayer == playerIndex);
             // Keep on polling until game is over
-            if (!(data['value']['status'] == 'win-x' ||
-                  data['value']['status'] == 'win-o' ||
-                  data['value']['status'] == 'draw')) {
+            if (!(data.value.status == 'win' ||
+                  data.value.status == 'draw')) {
                 setTimeout(pollRequest, 500)
             }
         });
@@ -102,17 +102,18 @@ $(function() {
     gameId = prompt("Enter game ID");
 
     $.getJSON('http://localhost/connect/' + gameId, function(data) {
-        authId = data['value']['key'];
-        type = data['value']['type'];
+        turnKey = data.value.key;
+        playerSymbol = data.value.playerSymbol;
+        playerIndex = data.value.playerIndex;
 
         connectInfoDiv.html('Connected to: <b>' + gameId + '</b><br/>' + 
-            'Using auth key: <b>' + authId + '</b><br/>' +
-            'Playing as: <b>' + type + '</b>');
+            'Using auth key: <b>' + turnKey + '</b><br/>' +
+            'Playing as: <b>' + playerSymbol + '</b>');
 
         // Start polling
         pollRequest();
     }).error(function(res) {
-        connectInfoDiv.html("Error occured: " + res.responseJSON['value']);
+        connectInfoDiv.html("Error occured: " + res.responseJSON.value);
         gameContentDiv.remove();
     });
 });
